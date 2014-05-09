@@ -6,7 +6,8 @@ load()
 # Daten müssen "erg" genannt werden
 
 
-
+# Erstellung einer Liste aus allen anderen Listen
+erg <- c(erg1, erg2)
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -268,8 +269,27 @@ Auswertung <- lapply(seq_along(erg), FUN=function(x){
 })
 
 
+### Data.Frame der für alle 100 Simulationen 
+Differences <- lapply(seq_along(Auswertung), FUN=function(var){
+  Auswertung[[var]][[1]]
+})
+Differences <- do.call("rbind", Differences)
 
- 
+
+MUs <- lapply(seq_along(Auswertung), FUN=function(var){
+  Auswertung[[var]][[2]]
+})
+MUs <- do.call("rbind", MUs)
+
+
+BS_Samples <- lapply(seq_along(Auswertung), FUN=function(var){
+  Auswertung[[var]][[3]]
+})
+
+
+Results <- list(Differences, MUs, BS_Samples)
+return(Results)
+
 
 
 
