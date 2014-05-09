@@ -6,22 +6,6 @@ load()
 # Daten müssen "erg" genannt werden
 
 
-# Erstellung einer Liste aus allen anderen Listen
-erg <- c(erg1, erg2)
-
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-##############################
-### Angabe des Originalmodells: 
-MODEL <- "ace,acg,adg,bdh,be,cef,cfg,fjk,i"
-
-
-
-
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -199,97 +183,120 @@ cli <- function(x)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #############################################################
 #############################################################
-### Auswertung der Ergebnisse:
-  # Für jeden simulierten Datensatz wird ein Element in der 
-  # Liste erstellt, das wiederum eine Liste mit drei Elementen
-  # ist:
-  #    1) Datensatz mit einer Zeile und 14 Variablen
-  #    2) Vector mit "meu" "mseu" "mee"
-  #    3) Vector mit allen Cliquen eines Bootstraps 
-  #       als ein String; Vector entspricht Anzahl
-  #       Bootstraps
-
-Auswertung <- lapply(seq_along(erg), FUN=function(x){
-  
-
-  edge.rel.freq <- erg[[x]]$edgefreq/erg[[x]]$R
-  meanmodel <- ifelse(edge.rel.freq >=0.5, 1, 0)
-  meanmodel[lower.tri(meanmodel)] <- 0
-  
-  cli.original <- cli(erg[[x]]$original)
-  origmodel <- .gm.matrixparse(cli.original)
-  
-  
-  truemodel <- .gm.matrixparse(MODEL)
-  
-  
-  bm <- sapply(c(1:erg[[x]]$R), FUN=function(r){
-    cli(erg[[x]]$bootmodel[[r]])
-  }
-  )
-  
-  
-  
-  
-  mu.etc <-NULL
-  edges <- edge.rel.freq[lower.tri(edge.rel.freq)]
-  mu.etc <- unlist(mu(edges, nrow(edge.rel.freq)))
-  
-  
-  
-  
-  
-  ### Differenzen
-  diffmeanbm <- difforigbm <- difftruebm <- NULL
-  for(k in 1:length(bm))
-  {
-    diffmeanbm[k] <- sum(abs( meanmodel - .gm.matrixparse(bm[k])))  
-    difforigbm[k] <- sum(abs( origmodel - .gm.matrixparse(bm[k])))  
-    difftruebm[k] <- sum(abs( truemodel - .gm.matrixparse(bm[k])))  
-  } 
-  Dmeanbm <- sum(diffmeanbm)/length(bm)
-  Dorigbm <- sum(difforigbm)/length(bm)
-  Dtruebm <- sum(difftruebm)/length(bm)
-  PI95mm  <- quantile(diffmeanbm, prob=c(.05,.95))
-  PI95orig<- quantile(difforigbm, prob=c(.05,.95))
-  PI95true<- quantile(difftruebm, prob=c(.05,.95))
-  Dmean = sum(abs( meanmodel - truemodel))
-  Dorig = sum(abs( origmodel - truemodel))
-  
-  OUT <- list(data.frame("Truemodel"= MODEL, "Originalmodel"= .gm.modelparse(origmodel), "Meanmodel"= .gm.modelparse(meanmodel), 
-                         "Dtrue_boot"=Dtruebm, "PI95ut"=PI95true[1], "PI95ot"=PI95true[2], 
-                         "Dmean_boot"=Dmeanbm, "PI95um"=PI95mm[1], "PI95om"=PI95mm[2], 
-                         "Dorig_boot"=Dorigbm, "PI95uo"=PI95orig[1], "PI95oo"=PI95orig[2], 
-                         "Dmean"=Dmean, "Dorig"=Dorig),
-              "MU"=mu.etc,modelle=bm)
-  OUT
-  
-  
-  
-})
+### Funktion zur Auswertung der Ergebnisse:
+  # Für die simulierten Datensatz wird eine Liste erstellt, 
+  # in der das erste Element ein Dataframe ist mit den 
+  # Ergebnissen aus den Differenzen für alle x Simulationen.
+  # Das zweite Element ist ebenfalls ein Data.Frame, der die
+  # Ergebnisse für alle x Simulationen bzgl. der Funktion mu()
+  # beinhaltet.
+  # Das dritte Element ist wiederum eine Liste, das für jede
+  # der x Simulationen eine Vector mit den Samples der n 
+  # Bootstraps beinhaltet.
 
 
-### Data.Frame der für alle 100 Simulationen 
-Differences <- lapply(seq_along(Auswertung), FUN=function(var){
-  Auswertung[[var]][[1]]
-})
-Differences <- do.call("rbind", Differences)
+Results <- function(input.data, MODEL){
+  ### input.data sind die Ergenisse aus den x Simulationen
+    # und n Bootstraps
+  ### MODEL ist das wahre Model auf dessen Grundlage simuliert
+    # wurde (truemodel)
+  
+  
+  ### Hier ist noch keine Fehlerabfrage, weil die Ergebnisse in Listen 
+    # relativ komplex bzw. tief geschachtelt sind und die passende Abfrage
+    # längere Zeit zum Programmieren bräuchte um alle möglichen Fehler
+    # abzufangen. Für den aktuellen Fall (Stand 2014-05-09) funktioniert die
+    # Funktion
+  
+  Auswertung <- lapply(seq_along(input.data), FUN=function(x){
+    
+    
+    
+    edge.rel.freq <- input.data[[x]]$edgefreq/input.data[[x]]$R
+    meanmodel <- ifelse(edge.rel.freq >=0.5, 1, 0)
+    meanmodel[lower.tri(meanmodel)] <- 0
+    
+    cli.original <- cli(input.data[[x]]$original)
+    origmodel <- .gm.matrixparse(cli.original)
+    
+    
+    truemodel <- .gm.matrixparse(MODEL)
+    
+    
+    bm <- sapply(c(1:input.data[[x]]$R), FUN=function(r){
+      cli(input.data[[x]]$bootmodel[[r]])
+    }
+    )
+    
+    
+    
+    
+    mu.etc <-NULL
+    edges <- edge.rel.freq[lower.tri(edge.rel.freq)]
+    mu.etc <- unlist(mu(edges, nrow(edge.rel.freq)))
+    
+    
+    
+    
+    
+    ### Differenzen
+    diffmeanbm <- difforigbm <- difftruebm <- NULL
+    for(k in 1:length(bm))
+    {
+      diffmeanbm[k] <- sum(abs( meanmodel - .gm.matrixparse(bm[k])))  
+      difforigbm[k] <- sum(abs( origmodel - .gm.matrixparse(bm[k])))  
+      difftruebm[k] <- sum(abs( truemodel - .gm.matrixparse(bm[k])))  
+    } 
+    Dmeanbm <- sum(diffmeanbm)/length(bm)
+    Dorigbm <- sum(difforigbm)/length(bm)
+    Dtruebm <- sum(difftruebm)/length(bm)
+    PI95mm  <- quantile(diffmeanbm, prob=c(.05,.95))
+    PI95orig<- quantile(difforigbm, prob=c(.05,.95))
+    PI95true<- quantile(difftruebm, prob=c(.05,.95))
+    Dmean = sum(abs( meanmodel - truemodel))
+    Dorig = sum(abs( origmodel - truemodel))
+    
+    OUT <- list(data.frame("Truemodel"= MODEL, "Originalmodel"= .gm.modelparse(origmodel), "Meanmodel"= .gm.modelparse(meanmodel), 
+                           "Dtrue_boot"=Dtruebm, "PI95ut"=PI95true[1], "PI95ot"=PI95true[2], 
+                           "Dmean_boot"=Dmeanbm, "PI95um"=PI95mm[1], "PI95om"=PI95mm[2], 
+                           "Dorig_boot"=Dorigbm, "PI95uo"=PI95orig[1], "PI95oo"=PI95orig[2], 
+                           "Dmean"=Dmean, "Dorig"=Dorig),
+                "MU"=mu.etc,modelle=bm)
+    OUT
+    
+    
+    
+  })
+  
+  
+  ### Data.Frame der für alle x Simulationen bzgl Differenzen
+  Differences <- lapply(seq_along(Auswertung), FUN=function(var){
+    Auswertung[[var]][[1]]
+  })
+  Differences <- do.call("rbind", Differences)
+  row.names(Differences) <- NULL   #sonst sind die rownames 5%
+  
+  ### Data.Frame der für alle x Simulationen bzgl. Ergebnisse 
+  #der Funktion mu()
+  MUs <- lapply(seq_along(Auswertung), FUN=function(var){
+    Auswertung[[var]][[2]]
+  })
+  MUs <- do.call("rbind", MUs)
+  
+  ### Liste mit den n Bootstrap-Samples für die x Simulationen
+  BS_Samples <- lapply(seq_along(Auswertung), FUN=function(var){
+    Auswertung[[var]][[3]]
+  })
+  
+  
+  ergebnisse <- list(Differences, MUs, BS_Samples)
+  names(ergebnisse) <- c("Differences", "MUs", "BS_Samples")
+  return(ergebnisse)
 
 
-MUs <- lapply(seq_along(Auswertung), FUN=function(var){
-  Auswertung[[var]][[2]]
-})
-MUs <- do.call("rbind", MUs)
+
+}
 
 
-BS_Samples <- lapply(seq_along(Auswertung), FUN=function(var){
-  Auswertung[[var]][[3]]
-})
-
-
-Results <- list(Differences, MUs, BS_Samples)
-return(Results)
-
-
-
+Test <- Results(erg, "ace,acg,adg,bdh,be,cef,cfg,fjk,i")
 
